@@ -102,7 +102,6 @@ AUDIO_EXTENSIONS=(
 )
 
 
-
 # ==============================================================
 # SPECIAL IMAGE PREFIXES
 # ==============================================================
@@ -136,7 +135,7 @@ is_image()
 
 
 # ==============================================================
-# TEST VIDEO
+# TEST VIDEO / AUDIO
 # ==============================================================
 
 is_video_or_audio()
@@ -189,27 +188,6 @@ is_special_image()
 #
 # Finds the LAST contiguous sequence of digits in the filename
 # stem.
-#
-# Examples:
-#
-#   image47.jpg
-#       -> 47
-#
-#   image103.jpg
-#       -> 103
-#
-#   ser01_img12.png
-#       -> 12
-#
-#   im (01).png
-#       -> 01
-#
-#   漫画第9页.png
-#       -> 9
-#
-#   foo123bar456.jpg
-#       -> 456
-#
 # ==============================================================
 
 extract_last_number()
@@ -240,7 +218,6 @@ extract_last_number()
 # stem and splits it into:
 #
 #     PREFIX + NUMBER + SUFFIX
-#
 # ==============================================================
 
 split_last_number()
@@ -303,18 +280,10 @@ split_last_number()
     done
 
 
-    # ----------------------------------------------------------
-    # A number must have been found.
-    # ----------------------------------------------------------
-
     if [[ -z "$number" ]]; then
         return 1
     fi
 
-
-    # ----------------------------------------------------------
-    # Results.
-    # ----------------------------------------------------------
 
     NUMBER_PREFIX="$working"
     LAST_NUMBER="$number"
@@ -342,22 +311,6 @@ get_number_width()
 
 # ==============================================================
 # PROCESS EVERY SUBDIRECTORY
-#
-# IMPORTANT:
-#
-#   -mindepth 1
-#
-# prevents the initial "." from being returned by find.
-#
-# Therefore:
-#
-#     ./file.jpg
-#
-# is ignored, while:
-#
-#     ./folder/file.jpg
-#
-# is processed.
 # ==============================================================
 
 find . \
@@ -376,10 +329,15 @@ while IFS= read -r -d '' dir; do
     # PASS 1
     #
     # Find largest final number among normal images.
-    # ==============================================================
+    #
+    # Also collect the prefixes of numbered images. These prefixes
+    # are later used to identify an unnumbered "first" image.
+    # ==========================================================
 
     max_number=0
     numbered_images=0
+
+    declare -A NUMBERED_PREFIXES=()
 
     while IFS= read -r -d '' file; do
 
@@ -389,8 +347,9 @@ while IFS= read -r -d '' dir; do
 
         is_special_image "$name" && continue
 
-        if extract_last_number "$name"; then
+        if split_last_number "$name"; then
 
+            prefix="$NUMBER_PREFIX"
             number="$LAST_NUMBER"
 
             # Safely convert leading-zero values.
@@ -401,6 +360,71 @@ while IFS= read -r -d '' dir; do
             if (( number > max_number )); then
                 max_number=$number
             fi
+
+            NUMBERED_PREFIXES["$prefix"]=1
+
+        fi
+
+    done < <(
+        find "$dir" \
+            -mindepth 1 \
+            -maxdepth 1 \
+            -type f \
+            -print0
+    )
+
+
+    # ==========================================================
+    # PASS 2
+    #
+    # Find numberless images that should become "01".
+    #
+    # Conditions:
+    #
+    #   1. It is an image.
+    #   2. It is not a special image.
+    #   3. It has NO number in its filename.
+    #   4. Its entire stem is exactly a prefix that occurs on
+    #      another numbered image in this directory.
+    #
+    # Example:
+    #
+    #     image.jpg
+    #     image02.jpg
+    #     image03.jpg
+    #
+    #     -> image.jpg is recognized as implicit image 1.
+    #
+    # But:
+    #
+    #     image.jpg
+    #     other02.jpg
+    #
+    #     -> image.jpg is NOT changed.
+    # ==============================================================
+
+    declare -A IMPLICIT_FIRST_IMAGES=()
+
+    while IFS= read -r -d '' file; do
+
+        name=$(basename "$file")
+
+        is_image "$name" || continue
+
+        is_special_image "$name" && continue
+
+        # If it already contains a number, it is not an implicit 1.
+        if extract_last_number "$name"; then
+            continue
+        fi
+
+        stem="${name%.*}"
+
+        # The stem must exactly match a prefix used by a numbered
+        # image in this directory.
+        if [[ -n "${NUMBERED_PREFIXES[$stem]+x}" ]]; then
+
+            IMPLICIT_FIRST_IMAGES["$name"]=1
 
         fi
 
@@ -419,9 +443,16 @@ while IFS= read -r -d '' dir; do
 
     width=$(get_number_width "$max_number")
 
-    echo "  Numbered images: $numbered_images"
-    echo "  Largest number:  $max_number"
-    echo "  Padding width:   $width"
+    # An implicit first image requires at least two digits so that
+    # it becomes "01".
+    if (( ${#IMPLICIT_FIRST_IMAGES[@]} > 0 && width < 2 )); then
+        width=2
+    fi
+
+    echo "  Numbered images:        $numbered_images"
+    echo "  Largest number:         $max_number"
+    echo "  Implicit first images:  ${#IMPLICIT_FIRST_IMAGES[@]}"
+    echo "  Padding width:          $width"
 
 
     # ==========================================================
@@ -466,6 +497,24 @@ while IFS= read -r -d '' dir; do
 
 
             # --------------------------------------------------
+            # NUMBERLESS IMAGE THAT IS REALLY IMAGE 1
+            # --------------------------------------------------
+
+            if [[ -n "${IMPLICIT_FIRST_IMAGES[$name]+x}" ]]; then
+
+                extension=".${name##*.}"
+
+                new_name="${name%.*}$(printf '%0*d' "$width" 1)${extension}"
+
+                OLD_NAMES+=("$dir/$name")
+                NEW_NAMES+=("$dir/$new_name")
+
+                continue
+
+            fi
+
+
+            # --------------------------------------------------
             # NORMAL NUMBERED IMAGE
             # --------------------------------------------------
 
@@ -502,6 +551,9 @@ while IFS= read -r -d '' dir; do
 
                 # ------------------------------------------------
                 # Non-numbered normal image.
+                #
+                # If it did not qualify as an implicit first image,
+                # it keeps the existing behavior.
                 # ------------------------------------------------
 
                 OLD_NAMES+=("$dir/$name")
@@ -511,7 +563,7 @@ while IFS= read -r -d '' dir; do
 
 
         # ======================================================
-        # VIDEOS
+        # VIDEOS / AUDIO
         # ======================================================
 
         elif is_video_or_audio "$name"; then
@@ -577,38 +629,28 @@ while IFS= read -r -d '' dir; do
     #
     # Do NOT use a leading "." or a ".tmp" extension here.
     #
-    # This script operates on SMB shares, where dot-prefixed
-    # names and temporary-looking files can interact badly with
-    # Windows/SMB hidden-file handling.
-    #
     # Temporary names therefore look like:
     #
     #     __filename_normalizer_tmp_12345_0
-    #
-    # rather than:
-    #
-    #     .filename-normalizer-12345-0.tmp
-    #
     # ==============================================================
 
     declare -a TEMP_NAMES=()
 
-for (( i=0; i<${#OLD_NAMES[@]}; i++ )); do
+    for (( i=0; i<${#OLD_NAMES[@]}; i++ )); do
 
-    old="${OLD_NAMES[$i]}"
+        old="${OLD_NAMES[$i]}"
 
-    temp="$dir/__filename_normalizer_tmp_${RANDOM}_${i}"
-
-    while [[ -e "$temp" || -L "$temp" ]]; do
         temp="$dir/__filename_normalizer_tmp_${RANDOM}_${i}"
+
+        while [[ -e "$temp" || -L "$temp" ]]; do
+            temp="$dir/__filename_normalizer_tmp_${RANDOM}_${i}"
+        done
+
+        TEMP_NAMES+=("$temp")
+
+        mv -- "$old" "$temp"
+
     done
-
-    TEMP_NAMES+=("$temp")
-
-    mv -- "$old" "$temp"
-
-done
-
 
 
     # ==========================================================
