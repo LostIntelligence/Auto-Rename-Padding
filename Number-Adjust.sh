@@ -514,7 +514,7 @@ while IFS= read -r -d '' dir; do
         # VIDEOS
         # ======================================================
 
-        elif is_video "$name"; then
+        elif is_video_or_audio "$name"; then
 
             OLD_NAMES+=("$dir/$name")
             NEW_NAMES+=("$dir/~$name")
