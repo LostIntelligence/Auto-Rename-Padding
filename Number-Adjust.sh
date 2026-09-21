@@ -179,6 +179,24 @@ is_special_image()
 #
 # Finds the LAST contiguous sequence of digits in the filename
 # stem.
+#
+# IMPORTANT:
+#
+# The number must be the FINAL part of the stem.
+#
+# Therefore:
+#
+#     image16.jpg
+#         -> 16
+#
+#     image16-preview.jpg
+#         -> no number
+#
+#     Cars [66P-214MB].jpg
+#         -> no number
+#
+#     Cars [66P-214MB]-45.jpg
+#         -> 45
 # ==============================================================
 
 extract_last_number()
@@ -208,6 +226,19 @@ extract_last_number()
 # stem and splits it into:
 #
 #     PREFIX + NUMBER + SUFFIX
+#
+# Example:
+#
+#     image-045-preview.jpg
+#
+# becomes:
+#
+#     PREFIX = image-045-
+#     NUMBER = 045
+#     SUFFIX = preview
+#
+# In normal use the final number is expected to be the sequence
+# number, but the function deliberately preserves any suffix.
 # ==============================================================
 
 split_last_number()
@@ -279,6 +310,53 @@ split_last_number()
 }
 
 # ==============================================================
+# NORMALIZE SEQUENCE PREFIX
+#
+# Used ONLY when comparing a numberless image against a
+# numbered image.
+#
+# A single separator immediately before the number is ignored.
+#
+# Therefore these all have the same sequence key:
+#
+#     image
+#     image-
+#     image_
+#     image.
+#     image<space>
+#
+# This does NOT perform fuzzy matching.
+#
+# In particular:
+#
+#     image-preview
+#
+# remains different from:
+#
+#     image
+#
+# This keeps matching conservative.
+# ==============================================================
+
+normalize_sequence_prefix()
+{
+  local value="$1"
+
+  # Remove ONE trailing sequence separator.
+  #
+  # Supported separators:
+  #
+  #     -
+  #     _
+  #     .
+  #     space
+  #
+  value="${value%[-_. ]}"
+
+  printf '%s' "$value"
+}
+
+# ==============================================================
 # DETERMINE NUMBER WIDTH
 # ==============================================================
 
@@ -313,26 +391,33 @@ find . \
   #
   # Find largest FINAL number among normal images.
   #
+  # Also build a list of sequence prefixes.
+  #
   # IMPORTANT:
   #
-  # Use extract_last_number(), NOT split_last_number().
+  # The comparison prefix is normalized so that:
   #
-  # This means a number only counts when it is at the END of
-  # the filename stem.
+  #     image45.jpg
+  #     image-45.jpg
+  #     image_45.jpg
+  #     image.45.jpg
+  #     image 45.jpg
   #
-  # For example:
+  # can all establish the sequence:
   #
-  #     image16.jpg
-  #         -> number 16
+  #     image
   #
-  #     image16-preview.jpg
-  #         -> NOT a numbered image
+  # But:
   #
-  #     Chizu [66P-214MB].jpg
-  #         -> NOT a numbered image
+  #     image-preview-45.jpg
   #
-  # This is important because filenames can contain metadata
-  # such as page counts, file sizes, etc.
+  # establishes:
+  #
+  #     image-preview
+  #
+  # and therefore does NOT match:
+  #
+  #     image.jpg
   # ==============================================================
 
   max_number=0
@@ -367,17 +452,35 @@ find . \
       fi
 
       # ------------------------------------------------------
-      # Determine the prefix for the implicit-first-image
-      # detection.
+      # Get the stem with the final number removed.
       #
-      # Since extract_last_number() only succeeds when the
-      # number is at the very end, the prefix is simply the
-      # stem with that final number removed.
+      # Example:
+      #
+      #     image-45
+      #
+      # becomes:
+      #
+      #     image-
       # ------------------------------------------------------
 
       stem="${name%.*}"
 
       prefix="${stem:0:${#stem}-${#LAST_NUMBER}}"
+
+      # ------------------------------------------------------
+      # Normalize the separator immediately before the number.
+      #
+      # image-
+      # image_
+      # image.
+      # image<space>
+      #
+      # all become:
+      #
+      # image
+      # ------------------------------------------------------
+
+      prefix="$(normalize_sequence_prefix "$prefix")"
 
       NUMBERED_PREFIXES["$prefix"]=1
 
@@ -401,29 +504,30 @@ find . \
   #   1. It is an image.
   #   2. It is not a special image.
   #   3. It has NO number at the end of its stem.
-  #   4. Its complete stem exactly matches the prefix of an
-  #      existing numbered image.
+  #   4. Its normalized stem exactly matches the normalized
+  #      prefix of an existing numbered image.
   #
   # Example:
   #
   #     image.jpg
-  #     image02.jpg
-  #     image03.jpg
+  #     image-45.jpg
+  #     image-46.jpg
   #
-  #     -> image.jpg becomes image01.jpg
+  #     -> image-01.jpg
   #
-  # But:
+  # Also:
   #
-  #     Chizu [66P-214MB].jpg
+  #     image.jpg
+  #     image_45.jpg
   #
-  #     is NOT treated as image 214, and is NOT treated as an
-  #     implicit image 1 unless there is actually a numbered
-  #     sequence whose prefix is exactly:
+  #     -> image_01.jpg
   #
-  #         Chizu [66P-214MB]
+  # The separator used by the existing numbered sequence is
+  # preserved when constructing the new filename.
   # ==============================================================
 
   declare -A IMPLICIT_FIRST_IMAGES=()
+  declare -A IMPLICIT_FIRST_SEPARATORS=()
 
   while IFS= read -r -d '' file; do
 
@@ -445,12 +549,46 @@ find . \
     fi
 
     # ----------------------------------------------------------
-    # The COMPLETE stem must exactly match the prefix of an
-    # existing numbered image.
+    # Normalize the numberless stem.
+    #
+    # Normally this changes nothing, because there is no
+    # separator before a number.
+    #
+    # It does allow a stem such as:
+    #
+    #     image-
+    #
+    # to match:
+    #
+    #     image-45.jpg
+    #
+    # while preserving the existing separator.
     # ----------------------------------------------------------
 
-    if [[ -n "${NUMBERED_PREFIXES[$stem]+x}" ]]; then
+    normalized_stem="$(normalize_sequence_prefix "$stem")"
+
+    # ----------------------------------------------------------
+    # The COMPLETE normalized stem must match the normalized
+    # prefix of an existing numbered image.
+    # ----------------------------------------------------------
+
+    if [[ -n "${NUMBERED_PREFIXES[$normalized_stem]+x}" ]]; then
+
       IMPLICIT_FIRST_IMAGES["$name"]=1
+
+      # ------------------------------------------------------
+      # Determine the separator used by the numberless filename.
+      #
+      # For:
+      #
+      #     image.jpg
+      #
+      # this is empty.
+      #
+      # We therefore need to discover the separator from an
+      # existing numbered file later.
+      # ------------------------------------------------------
+
     fi
 
   done < <(
@@ -460,6 +598,85 @@ find . \
     -type f \
     -print0
   )
+
+  # ==========================================================
+  # DETERMINE SEPARATORS FOR IMPLICIT FIRST IMAGES
+  #
+  # When:
+  #
+  #     image.jpg
+  #     image-45.jpg
+  #
+  # exists, the new name should be:
+  #
+  #     image-01.jpg
+  #
+  # When:
+  #
+  #     image.jpg
+  #     image_45.jpg
+  #
+  # exists, it should become:
+  #
+  #     image_01.jpg
+  #
+  # For a plain number:
+  #
+  #     image.jpg
+  #     image45.jpg
+  #
+  # it becomes:
+  #
+  #     image01.jpg
+  # ==============================================================
+
+  for first_name in "${!IMPLICIT_FIRST_IMAGES[@]}"; do
+
+    first_stem="${first_name%.*}"
+    normalized_stem="$(normalize_sequence_prefix "$first_stem")"
+
+    IMPLICIT_FIRST_SEPARATORS["$first_name"]=""
+
+    while IFS= read -r -d '' numbered_file; do
+
+      numbered_name=$(basename "$numbered_file")
+
+      is_image "$numbered_name" || continue
+      is_special_image "$numbered_name" && continue
+
+      if ! extract_last_number "$numbered_name"; then
+        continue
+      fi
+
+      numbered_stem="${numbered_name%.*}"
+
+      numbered_prefix="${numbered_stem:0:${#numbered_stem}-${#LAST_NUMBER}}"
+
+      numbered_normalized="$(normalize_sequence_prefix "$numbered_prefix")"
+
+      if [[ "$numbered_normalized" == "$normalized_stem" ]]; then
+
+        # ----------------------------------------------------
+        # Determine the separator between prefix and number.
+        # ----------------------------------------------------
+
+        separator="${numbered_prefix:${#numbered_normalized}}"
+
+        IMPLICIT_FIRST_SEPARATORS["$first_name"]="$separator"
+
+        break
+
+      fi
+
+    done < <(
+    find "$dir" \
+      -mindepth 1 \
+      -maxdepth 1 \
+      -type f \
+      -print0
+    )
+
+  done
 
   # ==========================================================
   # DETERMINE PADDING
@@ -513,6 +730,7 @@ find . \
         NEW_NAMES+=("$dir/*$name")
 
         continue
+
       fi
 
       # --------------------------------------------------
@@ -523,7 +741,9 @@ find . \
 
         extension=".${name##*.}"
 
-        new_name="${name%.*}$(printf '%0*d' "$width" 1)${extension}"
+        separator="${IMPLICIT_FIRST_SEPARATORS[$name]}"
+
+        new_name="${name%.*}${separator}$(printf '%0*d' "$width" 1)${extension}"
 
         OLD_NAMES+=("$dir/$name")
         NEW_NAMES+=("$dir/$new_name")
@@ -630,6 +850,7 @@ find . \
     done
 
     continue
+
   fi
 
   # ==========================================================
