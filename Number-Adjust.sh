@@ -88,6 +88,22 @@ VIDEO_EXTENSIONS=(
 
 
 # ==============================================================
+# AUDIO EXTENSIONS
+# ==============================================================
+
+AUDIO_EXTENSIONS=(
+    m4a
+    mp3
+    flac
+    ogg
+    opus
+    wav
+    aac
+)
+
+
+
+# ==============================================================
 # SPECIAL IMAGE PREFIXES
 # ==============================================================
 
@@ -123,7 +139,7 @@ is_image()
 # TEST VIDEO
 # ==============================================================
 
-is_video()
+is_video_or_audio()
 {
     local file="$1"
     local ext="${file##*.}"
@@ -133,6 +149,10 @@ is_video()
     ext="${ext,,}"
 
     for allowed in "${VIDEO_EXTENSIONS[@]}"; do
+        [[ "$ext" == "$allowed" ]] && return 0
+    done
+
+    for allowed in "${AUDIO_EXTENSIONS[@]}"; do
         [[ "$ext" == "$allowed" ]] && return 0
     done
 
