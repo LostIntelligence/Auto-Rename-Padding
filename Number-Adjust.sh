@@ -34,7 +34,6 @@ set -euo pipefail
 #
 # ==============================================================
 
-
 # ==============================================================
 # OPTIONS
 # ==============================================================
@@ -42,76 +41,71 @@ set -euo pipefail
 DRY_RUN=false
 
 if [[ "${1:-}" == "-n" || "${1:-}" == "--dry-run" ]]; then
-    DRY_RUN=true
+  DRY_RUN=true
 fi
-
 
 # ==============================================================
 # IMAGE EXTENSIONS
 # ==============================================================
 
 IMAGE_EXTENSIONS=(
-    jpg
-    jpeg
-    png
-    gif
-    webp
-    bmp
-    tif
-    tiff
-    avif
-    heic
-    heif
+jpg
+jpeg
+png
+gif
+webp
+bmp
+tif
+tiff
+avif
+heic
+heif
 )
-
 
 # ==============================================================
 # VIDEO EXTENSIONS
 # ==============================================================
 
 VIDEO_EXTENSIONS=(
-    mp4
-    mkv
-    avi
-    mov
-    m4v
-    webm
-    mpg
-    mpeg
-    ts
-    m2ts
-    mts
-    flv
-    wmv
-    ogv
+mp4
+mkv
+avi
+mov
+m4v
+webm
+mpg
+mpeg
+ts
+m2ts
+mts
+flv
+wmv
+ogv
 )
-
 
 # ==============================================================
 # AUDIO EXTENSIONS
 # ==============================================================
 
 AUDIO_EXTENSIONS=(
-    m4a
-    mp3
-    flac
-    ogg
-    opus
-    wav
-    aac
+m4a
+mp3
+flac
+ogg
+opus
+wav
+aac
 )
-
 
 # ==============================================================
 # SPECIAL IMAGE PREFIXES
 # ==============================================================
 
 SPECIAL_PREFIXES=(
-    cover
-    wallpaper
-    preview
+cover
+wallpaper
+preview
 )
-
 
 # ==============================================================
 # TEST IMAGE
@@ -119,20 +113,19 @@ SPECIAL_PREFIXES=(
 
 is_image()
 {
-    local file="$1"
-    local ext="${file##*.}"
+  local file="$1"
+  local ext="${file##*.}"
 
-    [[ "$file" == "$ext" ]] && return 1
+  [[ "$file" == "$ext" ]] && return 1
 
-    ext="${ext,,}"
+  ext="${ext,,}"
 
-    for allowed in "${IMAGE_EXTENSIONS[@]}"; do
-        [[ "$ext" == "$allowed" ]] && return 0
-    done
+  for allowed in "${IMAGE_EXTENSIONS[@]}"; do
+    [[ "$ext" == "$allowed" ]] && return 0
+  done
 
-    return 1
+  return 1
 }
-
 
 # ==============================================================
 # TEST VIDEO / AUDIO
@@ -140,24 +133,23 @@ is_image()
 
 is_video_or_audio()
 {
-    local file="$1"
-    local ext="${file##*.}"
+  local file="$1"
+  local ext="${file##*.}"
 
-    [[ "$file" == "$ext" ]] && return 1
+  [[ "$file" == "$ext" ]] && return 1
 
-    ext="${ext,,}"
+  ext="${ext,,}"
 
-    for allowed in "${VIDEO_EXTENSIONS[@]}"; do
-        [[ "$ext" == "$allowed" ]] && return 0
-    done
+  for allowed in "${VIDEO_EXTENSIONS[@]}"; do
+    [[ "$ext" == "$allowed" ]] && return 0
+  done
 
-    for allowed in "${AUDIO_EXTENSIONS[@]}"; do
-        [[ "$ext" == "$allowed" ]] && return 0
-    done
+  for allowed in "${AUDIO_EXTENSIONS[@]}"; do
+    [[ "$ext" == "$allowed" ]] && return 0
+  done
 
-    return 1
+  return 1
 }
-
 
 # ==============================================================
 # TEST SPECIAL IMAGE
@@ -165,23 +157,22 @@ is_video_or_audio()
 
 is_special_image()
 {
-    local name="$1"
-    local base="${name%.*}"
-    local lower_base="${base,,}"
-    local prefix
+  local name="$1"
+  local base="${name%.*}"
+  local lower_base="${base,,}"
+  local prefix
 
-    for prefix in "${SPECIAL_PREFIXES[@]}"; do
+  for prefix in "${SPECIAL_PREFIXES[@]}"; do
 
-        if [[ "$lower_base" == "$prefix" ]] ||
-           [[ "$lower_base" =~ ^${prefix}([0-9]+|[^[:alnum:]].*)$ ]]; then
-            return 0
-        fi
+    if [[ "$lower_base" == "$prefix" ]] ||
+      [[ "$lower_base" =~ ^${prefix}([0-9]+|[^[:alnum:]].*)$ ]]; then
+      return 0
+    fi
 
-    done
+  done
 
-    return 1
+  return 1
 }
-
 
 # ==============================================================
 # EXTRACT LAST NUMBER
@@ -192,24 +183,23 @@ is_special_image()
 
 extract_last_number()
 {
-    local name="$1"
-    local stem="${name%.*}"
-    local reversed
+  local name="$1"
+  local stem="${name%.*}"
+  local reversed
 
-    LAST_NUMBER=""
+  LAST_NUMBER=""
 
-    reversed=$(printf '%s' "$stem" | rev)
+  reversed=$(printf '%s' "$stem" | rev)
 
-    if [[ "$reversed" =~ ^([0-9]+) ]]; then
+  if [[ "$reversed" =~ ^([0-9]+) ]]; then
 
-        LAST_NUMBER=$(printf '%s' "${BASH_REMATCH[1]}" | rev)
+    LAST_NUMBER=$(printf '%s' "${BASH_REMATCH[1]}" | rev)
 
-        return 0
-    fi
+    return 0
+  fi
 
-    return 1
+  return 1
 }
-
 
 # ==============================================================
 # SPLIT LAST NUMBER
@@ -222,76 +212,71 @@ extract_last_number()
 
 split_last_number()
 {
-    local name="$1"
-    local stem="${name%.*}"
-    local working="$stem"
-    local suffix=""
-    local number=""
-    local char
+  local name="$1"
+  local stem="${name%.*}"
+  local working="$stem"
+  local suffix=""
+  local number=""
+  local char
 
-    NUMBER_PREFIX=""
-    LAST_NUMBER=""
-    NUMBER_SUFFIX=""
+  NUMBER_PREFIX=""
+  LAST_NUMBER=""
+  NUMBER_SUFFIX=""
 
-    # ----------------------------------------------------------
-    # Step 1:
-    # Remove non-digit characters from the END.
-    # ----------------------------------------------------------
+  # ----------------------------------------------------------
+  # Step 1:
+  # Remove non-digit characters from the END.
+  # ----------------------------------------------------------
 
-    while [[ -n "$working" ]]; do
+  while [[ -n "$working" ]]; do
 
-        char="${working: -1}"
+    char="${working: -1}"
 
-        if [[ "$char" =~ [0-9] ]]; then
-            break
-        fi
-
-        suffix="${char}${suffix}"
-        working="${working:0:${#working}-1}"
-
-    done
-
-
-    # ----------------------------------------------------------
-    # No digit at the end means there is no final number.
-    # ----------------------------------------------------------
-
-    if [[ -z "$working" ]]; then
-        return 1
+    if [[ "$char" =~ [0-9] ]]; then
+      break
     fi
 
+    suffix="${char}${suffix}"
+    working="${working:0:${#working}-1}"
 
-    # ----------------------------------------------------------
-    # Step 2:
-    # Remove the final contiguous digit sequence.
-    # ----------------------------------------------------------
+  done
 
-    while [[ -n "$working" ]]; do
+  # ----------------------------------------------------------
+  # No digit at the end means there is no final number.
+  # ----------------------------------------------------------
 
-        char="${working: -1}"
+  if [[ -z "$working" ]]; then
+    return 1
+  fi
 
-        if [[ ! "$char" =~ [0-9] ]]; then
-            break
-        fi
+  # ----------------------------------------------------------
+  # Step 2:
+  # Remove the final contiguous digit sequence.
+  # ----------------------------------------------------------
 
-        number="${char}${number}"
-        working="${working:0:${#working}-1}"
+  while [[ -n "$working" ]]; do
 
-    done
+    char="${working: -1}"
 
-
-    if [[ -z "$number" ]]; then
-        return 1
+    if [[ ! "$char" =~ [0-9] ]]; then
+      break
     fi
 
+    number="${char}${number}"
+    working="${working:0:${#working}-1}"
 
-    NUMBER_PREFIX="$working"
-    LAST_NUMBER="$number"
-    NUMBER_SUFFIX="$suffix"
+  done
 
-    return 0
+  if [[ -z "$number" ]]; then
+    return 1
+  fi
+
+  NUMBER_PREFIX="$working"
+  LAST_NUMBER="$number"
+  NUMBER_SUFFIX="$suffix"
+
+  return 0
 }
-
 
 # ==============================================================
 # DETERMINE NUMBER WIDTH
@@ -299,398 +284,420 @@ split_last_number()
 
 get_number_width()
 {
-    local number="$1"
+  local number="$1"
 
-    if (( number > 0 )); then
-        printf '%s' "${#number}"
-    else
-        printf '0'
-    fi
+  if (( number > 0 )); then
+    printf '%s' "${#number}"
+  else
+    printf '0'
+  fi
 }
-
 
 # ==============================================================
 # PROCESS EVERY SUBDIRECTORY
 # ==============================================================
 
 find . \
+  -mindepth 1 \
+  -type d \
+  -print0 |
+  while IFS= read -r -d '' dir; do
+
+  echo
+  echo "============================================================"
+  echo "Directory: $dir"
+  echo "============================================================"
+
+  # ==========================================================
+  # PASS 1
+  #
+  # Find largest FINAL number among normal images.
+  #
+  # IMPORTANT:
+  #
+  # Use extract_last_number(), NOT split_last_number().
+  #
+  # This means a number only counts when it is at the END of
+  # the filename stem.
+  #
+  # For example:
+  #
+  #     image16.jpg
+  #         -> number 16
+  #
+  #     image16-preview.jpg
+  #         -> NOT a numbered image
+  #
+  #     Chizu [66P-214MB].jpg
+  #         -> NOT a numbered image
+  #
+  # This is important because filenames can contain metadata
+  # such as page counts, file sizes, etc.
+  # ==============================================================
+
+  max_number=0
+  numbered_images=0
+
+  declare -A NUMBERED_PREFIXES=()
+
+  while IFS= read -r -d '' file; do
+
+    name=$(basename "$file")
+
+    is_image "$name" || continue
+
+    is_special_image "$name" && continue
+
+    # ----------------------------------------------------------
+    # Only recognize a number when it is the FINAL part of the
+    # filename stem.
+    # ----------------------------------------------------------
+
+    if extract_last_number "$name"; then
+
+      number="$LAST_NUMBER"
+
+      # Safely convert leading-zero values.
+      number=$((10#$number))
+
+      numbered_images=$((numbered_images + 1))
+
+      if (( number > max_number )); then
+        max_number=$number
+      fi
+
+      # ------------------------------------------------------
+      # Determine the prefix for the implicit-first-image
+      # detection.
+      #
+      # Since extract_last_number() only succeeds when the
+      # number is at the very end, the prefix is simply the
+      # stem with that final number removed.
+      # ------------------------------------------------------
+
+      stem="${name%.*}"
+
+      prefix="${stem:0:${#stem}-${#LAST_NUMBER}}"
+
+      NUMBERED_PREFIXES["$prefix"]=1
+
+    fi
+
+  done < <(
+  find "$dir" \
     -mindepth 1 \
-    -type d \
-    -print0 |
-while IFS= read -r -d '' dir; do
+    -maxdepth 1 \
+    -type f \
+    -print0
+  )
+
+  # ==========================================================
+  # PASS 2
+  #
+  # Find numberless images that should become "01".
+  #
+  # Conditions:
+  #
+  #   1. It is an image.
+  #   2. It is not a special image.
+  #   3. It has NO number at the end of its stem.
+  #   4. Its complete stem exactly matches the prefix of an
+  #      existing numbered image.
+  #
+  # Example:
+  #
+  #     image.jpg
+  #     image02.jpg
+  #     image03.jpg
+  #
+  #     -> image.jpg becomes image01.jpg
+  #
+  # But:
+  #
+  #     Chizu [66P-214MB].jpg
+  #
+  #     is NOT treated as image 214, and is NOT treated as an
+  #     implicit image 1 unless there is actually a numbered
+  #     sequence whose prefix is exactly:
+  #
+  #         Chizu [66P-214MB]
+  # ==============================================================
+
+  declare -A IMPLICIT_FIRST_IMAGES=()
+
+  while IFS= read -r -d '' file; do
+
+    name=$(basename "$file")
+
+    is_image "$name" || continue
+
+    is_special_image "$name" && continue
+
+    stem="${name%.*}"
+
+    # ----------------------------------------------------------
+    # If the stem ends in a number, this is already a numbered
+    # image and therefore cannot be the implicit first image.
+    # ----------------------------------------------------------
+
+    if [[ "$stem" =~ [0-9]$ ]]; then
+      continue
+    fi
+
+    # ----------------------------------------------------------
+    # The COMPLETE stem must exactly match the prefix of an
+    # existing numbered image.
+    # ----------------------------------------------------------
+
+    if [[ -n "${NUMBERED_PREFIXES[$stem]+x}" ]]; then
+      IMPLICIT_FIRST_IMAGES["$name"]=1
+    fi
+
+  done < <(
+  find "$dir" \
+    -mindepth 1 \
+    -maxdepth 1 \
+    -type f \
+    -print0
+  )
+
+  # ==========================================================
+  # DETERMINE PADDING
+  # ==============================================================
+
+  width=$(get_number_width "$max_number")
+
+  # An implicit first image requires at least two digits so that
+  # it becomes "01".
+  if (( ${#IMPLICIT_FIRST_IMAGES[@]} > 0 && width < 2 )); then
+    width=2
+  fi
+
+  echo "  Numbered images:        $numbered_images"
+  echo "  Largest number:         $max_number"
+  echo "  Implicit first images:  ${#IMPLICIT_FIRST_IMAGES[@]}"
+  echo "  Padding width:          $width"
+
+  # ==========================================================
+  # BUILD RENAME LIST
+  # ==============================================================
+
+  declare -a OLD_NAMES=()
+  declare -a NEW_NAMES=()
+
+  while IFS= read -r -d '' file; do
+
+    name=$(basename "$file")
+
+    # ------------------------------------------------------
+    # Already processed.
+    # ------------------------------------------------------
+
+    if [[ "$name" == \** || "$name" == \~* ]]; then
+      continue
+    fi
+
+    # ======================================================
+    # IMAGES
+    # ======================================================
+
+    if is_image "$name"; then
+
+      # --------------------------------------------------
+      # SPECIAL IMAGE
+      # --------------------------------------------------
+
+      if is_special_image "$name"; then
+
+        OLD_NAMES+=("$dir/$name")
+        NEW_NAMES+=("$dir/*$name")
+
+        continue
+      fi
+
+      # --------------------------------------------------
+      # NUMBERLESS IMAGE THAT IS REALLY IMAGE 1
+      # --------------------------------------------------
+
+      if [[ -n "${IMPLICIT_FIRST_IMAGES[$name]+x}" ]]; then
+
+        extension=".${name##*.}"
+
+        new_name="${name%.*}$(printf '%0*d' "$width" 1)${extension}"
+
+        OLD_NAMES+=("$dir/$name")
+        NEW_NAMES+=("$dir/$new_name")
+
+        continue
+
+      fi
+
+      # --------------------------------------------------
+      # NORMAL NUMBERED IMAGE
+      # --------------------------------------------------
+
+      if split_last_number "$name"; then
+
+        prefix="$NUMBER_PREFIX"
+        number="$LAST_NUMBER"
+        suffix="$NUMBER_SUFFIX"
+
+        extension=".${name##*.}"
+
+        # Convert safely to decimal.
+        number=$((10#$number))
+
+        if (( width > 0 )); then
+          padded=$(printf "%0*d" "$width" "$number")
+        else
+          padded="$number"
+        fi
+
+        new_name="${prefix}${padded}${suffix}${extension}"
+
+        if [[ "$name" != "$new_name" ]]; then
+
+          OLD_NAMES+=("$dir/$name")
+          NEW_NAMES+=("$dir/$new_name")
+
+        fi
+
+      else
+
+        # ------------------------------------------------
+        # Non-numbered normal image.
+        #
+        # If it did not qualify as an implicit first image,
+        # it keeps the existing behavior.
+        # ------------------------------------------------
+
+        OLD_NAMES+=("$dir/$name")
+        NEW_NAMES+=("$dir/*$name")
+
+      fi
+
+      # ======================================================
+      # VIDEOS / AUDIO
+      # ======================================================
+
+    elif is_video_or_audio "$name"; then
+
+      OLD_NAMES+=("$dir/$name")
+      NEW_NAMES+=("$dir/~$name")
+
+      # ======================================================
+      # EVERYTHING ELSE
+      # ======================================================
+
+    else
+
+      OLD_NAMES+=("$dir/$name")
+      NEW_NAMES+=("$dir/*$name")
+
+    fi
+
+  done < <(
+  find "$dir" \
+    -mindepth 1 \
+    -maxdepth 1 \
+    -type f \
+    -print0
+  )
+
+  # ==========================================================
+  # NOTHING TO DO
+  # ==============================================================
+
+  if (( ${#OLD_NAMES[@]} == 0 )); then
+    echo "  Nothing to rename."
+    continue
+  fi
+
+  # ==========================================================
+  # DRY RUN
+  # ==============================================================
+
+  if "$DRY_RUN"; then
 
     echo
-    echo "============================================================"
-    echo "Directory: $dir"
-    echo "============================================================"
-
-
-    # ==========================================================
-    # PASS 1
-    #
-    # Find largest final number among normal images.
-    #
-    # Also collect the prefixes of numbered images. These prefixes
-    # are later used to identify an unnumbered "first" image.
-    # ==========================================================
-
-    max_number=0
-    numbered_images=0
-
-    declare -A NUMBERED_PREFIXES=()
-
-    while IFS= read -r -d '' file; do
-
-        name=$(basename "$file")
-
-        is_image "$name" || continue
-
-        is_special_image "$name" && continue
-
-        if split_last_number "$name"; then
-
-            prefix="$NUMBER_PREFIX"
-            number="$LAST_NUMBER"
-
-            # Safely convert leading-zero values.
-            number=$((10#$number))
-
-            numbered_images=$((numbered_images + 1))
-
-            if (( number > max_number )); then
-                max_number=$number
-            fi
-
-            NUMBERED_PREFIXES["$prefix"]=1
-
-        fi
-
-    done < <(
-        find "$dir" \
-            -mindepth 1 \
-            -maxdepth 1 \
-            -type f \
-            -print0
-    )
-
-
-    # ==========================================================
-    # PASS 2
-    #
-    # Find numberless images that should become "01".
-    #
-    # Conditions:
-    #
-    #   1. It is an image.
-    #   2. It is not a special image.
-    #   3. It has NO number in its filename.
-    #   4. Its entire stem is exactly a prefix that occurs on
-    #      another numbered image in this directory.
-    #
-    # Example:
-    #
-    #     image.jpg
-    #     image02.jpg
-    #     image03.jpg
-    #
-    #     -> image.jpg is recognized as implicit image 1.
-    #
-    # But:
-    #
-    #     image.jpg
-    #     other02.jpg
-    #
-    #     -> image.jpg is NOT changed.
-    # ==============================================================
-
-    declare -A IMPLICIT_FIRST_IMAGES=()
-
-    while IFS= read -r -d '' file; do
-
-        name=$(basename "$file")
-
-        is_image "$name" || continue
-
-        is_special_image "$name" && continue
-
-        # If it already contains a number, it is not an implicit 1.
-        if extract_last_number "$name"; then
-            continue
-        fi
-
-        stem="${name%.*}"
-
-        # The stem must exactly match a prefix used by a numbered
-        # image in this directory.
-        if [[ -n "${NUMBERED_PREFIXES[$stem]+x}" ]]; then
-
-            IMPLICIT_FIRST_IMAGES["$name"]=1
-
-        fi
-
-    done < <(
-        find "$dir" \
-            -mindepth 1 \
-            -maxdepth 1 \
-            -type f \
-            -print0
-    )
-
-
-    # ==========================================================
-    # DETERMINE PADDING
-    # ==============================================================
-
-    width=$(get_number_width "$max_number")
-
-    # An implicit first image requires at least two digits so that
-    # it becomes "01".
-    if (( ${#IMPLICIT_FIRST_IMAGES[@]} > 0 && width < 2 )); then
-        width=2
-    fi
-
-    echo "  Numbered images:        $numbered_images"
-    echo "  Largest number:         $max_number"
-    echo "  Implicit first images:  ${#IMPLICIT_FIRST_IMAGES[@]}"
-    echo "  Padding width:          $width"
-
-
-    # ==========================================================
-    # BUILD RENAME LIST
-    # ==============================================================
-
-    declare -a OLD_NAMES=()
-    declare -a NEW_NAMES=()
-
-    while IFS= read -r -d '' file; do
-
-        name=$(basename "$file")
-
-
-        # ------------------------------------------------------
-        # Already processed.
-        # ------------------------------------------------------
-
-        if [[ "$name" == \** || "$name" == \~* ]]; then
-            continue
-        fi
-
-
-        # ======================================================
-        # IMAGES
-        # ======================================================
-
-        if is_image "$name"; then
-
-
-            # --------------------------------------------------
-            # SPECIAL IMAGE
-            # --------------------------------------------------
-
-            if is_special_image "$name"; then
-
-                OLD_NAMES+=("$dir/$name")
-                NEW_NAMES+=("$dir/*$name")
-
-                continue
-            fi
-
-
-            # --------------------------------------------------
-            # NUMBERLESS IMAGE THAT IS REALLY IMAGE 1
-            # --------------------------------------------------
-
-            if [[ -n "${IMPLICIT_FIRST_IMAGES[$name]+x}" ]]; then
-
-                extension=".${name##*.}"
-
-                new_name="${name%.*}$(printf '%0*d' "$width" 1)${extension}"
-
-                OLD_NAMES+=("$dir/$name")
-                NEW_NAMES+=("$dir/$new_name")
-
-                continue
-
-            fi
-
-
-            # --------------------------------------------------
-            # NORMAL NUMBERED IMAGE
-            # --------------------------------------------------
-
-            if split_last_number "$name"; then
-
-                prefix="$NUMBER_PREFIX"
-                number="$LAST_NUMBER"
-                suffix="$NUMBER_SUFFIX"
-
-                extension=".${name##*.}"
-
-                # Convert safely to decimal.
-                number=$((10#$number))
-
-
-                if (( width > 0 )); then
-                    padded=$(printf "%0*d" "$width" "$number")
-                else
-                    padded="$number"
-                fi
-
-
-                new_name="${prefix}${padded}${suffix}${extension}"
-
-
-                if [[ "$name" != "$new_name" ]]; then
-
-                    OLD_NAMES+=("$dir/$name")
-                    NEW_NAMES+=("$dir/$new_name")
-
-                fi
-
-            else
-
-                # ------------------------------------------------
-                # Non-numbered normal image.
-                #
-                # If it did not qualify as an implicit first image,
-                # it keeps the existing behavior.
-                # ------------------------------------------------
-
-                OLD_NAMES+=("$dir/$name")
-                NEW_NAMES+=("$dir/*$name")
-
-            fi
-
-
-        # ======================================================
-        # VIDEOS / AUDIO
-        # ======================================================
-
-        elif is_video_or_audio "$name"; then
-
-            OLD_NAMES+=("$dir/$name")
-            NEW_NAMES+=("$dir/~$name")
-
-
-        # ======================================================
-        # EVERYTHING ELSE
-        # ======================================================
-
-        else
-
-            OLD_NAMES+=("$dir/$name")
-            NEW_NAMES+=("$dir/*$name")
-
-        fi
-
-    done < <(
-        find "$dir" \
-            -mindepth 1 \
-            -maxdepth 1 \
-            -type f \
-            -print0
-    )
-
-
-    # ==========================================================
-    # NOTHING TO DO
-    # ==============================================================
-
-    if (( ${#OLD_NAMES[@]} == 0 )); then
-        echo "  Nothing to rename."
-        continue
-    fi
-
-
-    # ==========================================================
-    # DRY RUN
-    # ==============================================================
-
-    if "$DRY_RUN"; then
-
-        echo
-        echo "  Planned changes:"
-
-        for (( i=0; i<${#OLD_NAMES[@]}; i++ )); do
-
-            echo "    ${OLD_NAMES[$i]}"
-            echo "      -> ${NEW_NAMES[$i]}"
-
-        done
-
-        continue
-    fi
-
-
-    # ==========================================================
-    # TEMPORARY RENAMES
-    #
-    # IMPORTANT:
-    #
-    # Do NOT use a leading "." or a ".tmp" extension here.
-    #
-    # Temporary names therefore look like:
-    #
-    #     __filename_normalizer_tmp_12345_0
-    # ==============================================================
-
-    declare -a TEMP_NAMES=()
+    echo "  Planned changes:"
 
     for (( i=0; i<${#OLD_NAMES[@]}; i++ )); do
 
-        old="${OLD_NAMES[$i]}"
-
-        temp="$dir/__filename_normalizer_tmp_${RANDOM}_${i}"
-
-        while [[ -e "$temp" || -L "$temp" ]]; do
-            temp="$dir/__filename_normalizer_tmp_${RANDOM}_${i}"
-        done
-
-        TEMP_NAMES+=("$temp")
-
-        mv -- "$old" "$temp"
+      echo "    ${OLD_NAMES[$i]}"
+      echo "      -> ${NEW_NAMES[$i]}"
 
     done
 
+    continue
+  fi
 
-    # ==========================================================
-    # FINAL RENAMES
-    # ==============================================================
+  # ==========================================================
+  # TEMPORARY RENAMES
+  #
+  # IMPORTANT:
+  #
+  # Do NOT use a leading "." or a ".tmp" extension here.
+  #
+  # Temporary names therefore look like:
+  #
+  #     __filename_normalizer_tmp_12345_0
+  # ==============================================================
 
-    for (( i=0; i<${#TEMP_NAMES[@]}; i++ )); do
+  declare -a TEMP_NAMES=()
 
-        temp="${TEMP_NAMES[$i]}"
-        new="${NEW_NAMES[$i]}"
+  for (( i=0; i<${#OLD_NAMES[@]}; i++ )); do
 
+    old="${OLD_NAMES[$i]}"
 
-        if [[ -e "$new" || -L "$new" ]]; then
+    temp="$dir/__filename_normalizer_tmp_${RANDOM}_${i}"
 
-            echo "    WARNING - target already exists:"
-            echo "      $new"
-            echo "    Temporary file left untouched:"
-            echo "      $temp"
-
-        else
-
-            echo "    $(basename "$temp")"
-            echo "      -> $(basename "$new")"
-
-            mv -- "$temp" "$new"
-
-        fi
-
+    while [[ -e "$temp" || -L "$temp" ]]; do
+      temp="$dir/__filename_normalizer_tmp_${RANDOM}_${i}"
     done
+
+    TEMP_NAMES+=("$temp")
+
+    mv -- "$old" "$temp"
+
+  done
+
+  # ==========================================================
+  # FINAL RENAMES
+  # ==============================================================
+
+  for (( i=0; i<${#TEMP_NAMES[@]}; i++ )); do
+
+    temp="${TEMP_NAMES[$i]}"
+    new="${NEW_NAMES[$i]}"
+
+    if [[ -e "$new" || -L "$new" ]]; then
+
+      echo "    WARNING - target already exists:"
+      echo "      $new"
+      echo "    Temporary file left untouched:"
+      echo "      $temp"
+
+    else
+
+      echo "    $(basename "$temp")"
+      echo "      -> $(basename "$new")"
+
+      mv -- "$temp" "$new"
+
+    fi
+
+  done
 
 done
-
 
 echo
 echo "============================================================"
 
 if "$DRY_RUN"; then
-    echo "DRY RUN COMPLETE - no files were changed."
+  echo "DRY RUN COMPLETE - no files were changed."
 else
-    echo "DONE."
+  echo "DONE."
 fi
 
 echo "============================================================"
