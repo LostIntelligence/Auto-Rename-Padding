@@ -482,7 +482,11 @@ find . \
 
       prefix="$(normalize_sequence_prefix "$prefix")"
 
-      NUMBERED_PREFIXES["$prefix"]=1
+      # A filename consisting only of a number has no sequence prefix.
+      # Do not use an empty string as an associative-array key.
+      if [[ -n "$prefix" ]]; then
+        NUMBERED_PREFIXES["$prefix"]=1
+      fi
 
     fi
 
@@ -572,7 +576,7 @@ find . \
     # prefix of an existing numbered image.
     # ----------------------------------------------------------
 
-    if [[ -n "${NUMBERED_PREFIXES[$normalized_stem]+x}" ]]; then
+    if [[ -n "$normalized_stem" && -n "${NUMBERED_PREFIXES[$normalized_stem]+x}" ]]; then
 
       IMPLICIT_FIRST_IMAGES["$name"]=1
 
