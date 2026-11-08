@@ -712,6 +712,11 @@ find . \
 
     name=$(basename "$file")
 
+    case "${name,,}" in
+      thumbs.db|desktop.ini|ehthumbs.db|folder.jpg.ini)
+      continue
+      ;;
+    esac
     # ------------------------------------------------------
     # Already processed.
     # ------------------------------------------------------
