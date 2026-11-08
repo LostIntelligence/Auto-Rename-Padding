@@ -12,6 +12,8 @@ set -euo pipefail
 # Dry run:
 #
 #     ./fix-media-names.sh -n
+#     or
+#     bash Number-Adjust.sh -n 2>&1 | tee -a log.x
 #
 # Every SUBDIRECTORY is processed independently.
 #
